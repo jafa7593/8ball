@@ -252,8 +252,11 @@
 
 <script>
 (() => {
-  // Each "No" answer is this many times as likely as any single Yes or Unsure answer.
-  const NO_WEIGHT = 1.5;
+  // Odds: each answer's chance = its type's weight, times DRINK_WEIGHT if it's a drinking answer.
+  const YES_WEIGHT = 1.5;
+  const UNSURE_WEIGHT = 1;
+  const NO_WEIGHT = 1;
+  const DRINK_WEIGHT = 2;
 
   const yes = [
     "It is certain",
@@ -266,7 +269,13 @@
     "Only if you take a shot",
     "Only if you chug a beer",
     "Only if you venmo me $5",
-    "Sure"
+    "Sure",
+    "Hell yeah brother",
+    "I guess",
+    "Daddy Elon says yes",
+    "Fuck yes",
+    "All signs point to fuck yeah",
+    "Claude says yes"
   ];
   const unsure = [
     "Reply hazy, try again",
@@ -297,8 +306,17 @@
     "No, better luck next time",
     "No"
   ];
+  const drinking = new Set([
+    "Only if you take a shot",
+    "Only if you chug a beer",
+    "Go home, you’re drunk"
+  ]);
   const answers = [...yes, ...unsure, ...no];
-  const weights = answers.map((_, i) => (i >= yes.length + unsure.length ? NO_WEIGHT : 1));
+  const weights = [
+    ...yes.map(() => YES_WEIGHT),
+    ...unsure.map(() => UNSURE_WEIGHT),
+    ...no.map(() => NO_WEIGHT)
+  ].map((w, i) => (drinking.has(answers[i]) ? w * DRINK_WEIGHT : w));
 
   const $ = (id) => document.getElementById(id);
   const pool = $("pool"), slosh = $("slosh"), die = $("die");
