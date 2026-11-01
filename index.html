@@ -147,13 +147,13 @@
     position: relative;
     width: 100%;
     aspect-ratio: 1 / 0.87;
-    transition: opacity 0.7s ease, transform 0.9s cubic-bezier(.2,.8,.2,1), filter 0.9s ease;
+    transition: opacity 0.45s ease, transform 0.7s cubic-bezier(.2,.8,.2,1), filter 0.5s ease;
     filter: drop-shadow(0 0 calc(var(--d) * 0.03) rgba(70,100,255,0.6));
   }
   .die.sunk {
     opacity: 0;
     transform: translateY(22%) scale(0.5) rotate(-14deg);
-    filter: blur(9px) drop-shadow(0 0 0 rgba(0,0,0,0));
+    filter: blur(6px) drop-shadow(0 0 0 rgba(0,0,0,0));
   }
   .tri {
     position: absolute;
@@ -330,16 +330,28 @@
     return true;
   }
 
-  function fit() {
+  // Largest font size (to 0.5px) at which `text` fits.
+  function sizeFor(text) {
     const W = die.offsetWidth, H = die.offsetHeight;
     const bw = answerBox.clientWidth, bh = answerBox.clientHeight;
-    if (!W || !bw || !bh) return;
+    if (!W || !bw || !bh) return 16;
     measurer.style.width = bw + "px";
     measurer.style.height = bh + "px";
-    mSpan.textContent = answerEl.textContent;
-    let size = bh * 0.42;
-    while (size > 6 && !fits(size, W, H, bw, bh, answerBox.offsetTop)) size -= 0.5;
-    answerEl.style.fontSize = size + "px";
+    mSpan.textContent = text;
+    const top = answerBox.offsetTop;
+    const max = bh * 0.42;
+    // Step down 2px at a time from the largest size, then refine upward by 0.5px.
+    let size = max;
+    while (size > 6 && !fits(size, W, H, bw, bh, top)) size -= 2;
+    size = Math.max(size, 6);
+    for (const bump of [1.5, 1, 0.5]) {
+      if (size + bump <= max && fits(size + bump, W, H, bw, bh, top)) { size += bump; break; }
+    }
+    return size;
+  }
+
+  function fit() {
+    answerEl.style.fontSize = sizeFor(answerEl.textContent) + "px";
   }
   window.addEventListener("resize", fit);
   try { document.fonts.ready.then(fit); } catch (e) {}
@@ -374,19 +386,23 @@
     for (let i = 0; i < 22; i++) setTimeout(() => bubble(true), i * 30);
 
     const next = pick();
+    const nextSize = sizeFor(next);   // measured now, so nothing heavy runs mid-animation
+    const show = () => {
+      answerEl.textContent = next;
+      answerEl.style.fontSize = nextSize + "px";
+    };
     hint.style.opacity = 0;
 
     if (!shown) {
       shown = true;
-      answerEl.textContent = next;
-      fit();
-      setTimeout(() => die.classList.remove("sunk"), 450);
-      setTimeout(done, 1300);
+      show();
+      setTimeout(() => die.classList.remove("sunk"), 300);
+      setTimeout(done, 1000);
     } else {
       die.classList.add("sunk");
-      setTimeout(() => { answerEl.textContent = next; fit(); }, 700);
-      setTimeout(() => die.classList.remove("sunk"), 850);
-      setTimeout(done, 1650);
+      setTimeout(show, 450);
+      setTimeout(() => die.classList.remove("sunk"), 480);
+      setTimeout(done, 1200);
     }
   }
 
