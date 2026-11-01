@@ -190,6 +190,13 @@
     text-shadow: 0 0 8px rgba(170,190,255,0.7);
   }
 
+  .answer-box.measure {
+    position: fixed;
+    left: -9999px; right: auto; top: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
   /* ---------- Depth ---------- */
   .murk {
     position: absolute;
@@ -246,13 +253,39 @@
 <script>
 (() => {
   const answers = [
-    "It is certain", "It is decidedly so", "Without a doubt", "Yes, definitely",
-    "You may rely on it", "As I see it, yes", "Most likely", "Outlook good",
-    "Yes", "Signs point to yes",
-    "Reply hazy, try again", "Ask again later", "Better not tell you now",
-    "Cannot predict now", "Concentrate and ask again",
-    "Don't count on it", "My reply is no", "My sources say no",
-    "Outlook not so good", "Very doubtful"
+    // Yes
+    "It is certain",
+    "Logic says no, chaos says absolutely",
+    "Yes, definitely",
+    "You may rely on it",
+    "Most likely",
+    "Outlook good",
+    "Signs point to yes",
+    "Only if you take a shot",
+    "Only if you chug a beer",
+    "Only if you venmo me $5",
+    // Unsure
+    "Reply hazy, try again",
+    "Better not tell you now",
+    "Concentrate and ask again",
+    "Have you tried asking AI instead?",
+    "Go home, you’re drunk",
+    "Call your boss right now and ask",
+    "What the fuck did you just ask me?",
+    "Ask your mom",
+    "Try asking Santa",
+    "Try lowering your expectations",
+    // No
+    "Don’t count on it",
+    "Hell no",
+    "Big if true, but no",
+    "Outlook bleak",
+    "Very doubtful",
+    "No, Jesus wouldn’t approve",
+    "No, adulthood isn’t fair",
+    "No, manifest harder",
+    "Sorry, I’m not magical",
+    "No, better luck next time"
   ];
 
   const $ = (id) => document.getElementById(id);
@@ -269,16 +302,44 @@
     return answers[i];
   }
 
-  // Fit text inside the triangle
-  function fit() {
-    const maxH = answerBox.clientHeight, maxW = answerBox.clientWidth;
-    if (!maxH || !maxW) return;
-    let size = maxH * 0.42;
-    answerEl.style.fontSize = size + "px";
-    while (size > 6 && (answerEl.offsetHeight > maxH || answerEl.scrollWidth > maxW)) {
-      size -= 0.5;
-      answerEl.style.fontSize = size + "px";
+  // Fit text inside the triangle.
+  // A hidden copy of the text box (free of animations) is measured; the font
+  // shrinks until every line fits the box AND the triangle's sloped sides.
+  const measurer = document.createElement("div");
+  measurer.className = "answer-box measure";
+  measurer.setAttribute("aria-hidden", "true");
+  measurer.innerHTML = '<span class="answer"></span>';
+  document.body.appendChild(measurer);
+  const mSpan = measurer.firstChild;
+
+  function fits(size, W, H, bw, bh, boxTop) {
+    mSpan.style.fontSize = size + "px";
+    if (mSpan.offsetHeight > bh || mSpan.scrollWidth > bw) return false;
+    const mr = measurer.getBoundingClientRect();
+    const cx = mr.left + bw / 2;
+    const range = document.createRange();
+    range.selectNodeContents(mSpan);
+    for (const r of range.getClientRects()) {
+      if (!r.width) continue;
+      // Inner triangle: top edge at 4% of height, point at 91%, 87% of width wide at the top.
+      const y = (boxTop + (r.bottom - mr.top)) / H;
+      const allowedHalf = 0.435 * W * (0.91 - y) / 0.87 - 0.035 * W;
+      const half = Math.max(cx - r.left, r.right - cx);
+      if (half > allowedHalf) return false;
     }
+    return true;
+  }
+
+  function fit() {
+    const W = die.offsetWidth, H = die.offsetHeight;
+    const bw = answerBox.clientWidth, bh = answerBox.clientHeight;
+    if (!W || !bw || !bh) return;
+    measurer.style.width = bw + "px";
+    measurer.style.height = bh + "px";
+    mSpan.textContent = answerEl.textContent;
+    let size = bh * 0.42;
+    while (size > 6 && !fits(size, W, H, bw, bh, answerBox.offsetTop)) size -= 0.5;
+    answerEl.style.fontSize = size + "px";
   }
   window.addEventListener("resize", fit);
   try { document.fonts.ready.then(fit); } catch (e) {}
